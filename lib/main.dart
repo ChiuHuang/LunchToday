@@ -809,7 +809,6 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
 
   Future<void> _searchSchools() async {
     final query = _searchController.text.trim();
-    if (query.length < 2) return;
 
     setState(() {
       _isLoading = true;
