@@ -40,6 +40,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
   bool _isLoading = false;
   String _errorMessage = '';
   DateTime _selectedDate = DateTime.now();
+  bool _isSchoolPickerExpanded = true;
 
   @override
   void initState() {
@@ -165,13 +166,6 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
           '今天午餐吃什麼',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.calendar_today, color: Colors.black),
-            onPressed: () => _showDatePicker(context),
-            tooltip: '選擇日期查看午餐',
-          ),
-        ],
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         elevation: 0,
       ),
@@ -187,43 +181,64 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '搜尋學校',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _isSchoolPickerExpanded = !_isSchoolPickerExpanded;
+                        });
+                      },
+                      child: Row(
+                        children: [
+                          Text(
+                            _selectedSchool == null
+                                ? '搜尋學校'
+                                : '已選擇: ${_selectedSchool!.schoolName}',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            _isSchoolPickerExpanded
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: '請輸入學校名稱（例：XX國小）',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                    ),
-                    if (_schools.isNotEmpty) ...[
+                    if (_isSchoolPickerExpanded) ...[
                       const SizedBox(height: 12),
-                      Container(
-                        height: 150,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ListView.builder(
-                          itemCount: _schools.length,
-                          itemBuilder: (context, index) {
-                            final school = _schools[index];
-                            return ListTile(
-                              title: Text(school.schoolName),
-                              subtitle: Text('學校代碼: ${school.schoolCode}'),
-                              onTap: () => _selectSchool(school),
-                              selected:
-                                  _selectedSchool?.schoolId == school.schoolId,
-                            );
-                          },
+                      TextField(
+                        controller: _searchController,
+                        decoration: const InputDecoration(
+                          hintText: '請輸入學校名稱（例：XX國小）',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.search),
                         ),
                       ),
+                      if (_schools.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 150,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ListView.builder(
+                            itemCount: _schools.length,
+                            itemBuilder: (context, index) {
+                              final school = _schools[index];
+                              return ListTile(
+                                title: Text(school.schoolName),
+                                subtitle: Text('學校代碼: ${school.schoolCode}'),
+                                onTap: () => _selectSchool(school),
+                                selected:
+                                    _selectedSchool?.schoolId ==
+                                    school.schoolId,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ),
