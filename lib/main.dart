@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
@@ -18,6 +19,16 @@ class LunchMenuApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
       ),
+      // Add localization support
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('zh', 'TW'), // Traditional Chinese
+      ],
+      locale: const Locale('zh', 'TW'),
       home: const LunchMenuHomePage(),
     );
   }
@@ -40,7 +51,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
   bool _isLoading = false;
   String _errorMessage = '';
   DateTime _selectedDate = DateTime.now();
-  bool _isSchoolPickerExpanded = true;
+  bool _isSearching = false; // Changed from _isSchoolPickerExpanded
 
   @override
   void initState() {
@@ -70,14 +81,14 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)), // 一年前
+      firstDate: DateTime.now().subtract(const Duration(days: 1024)),
       lastDate: DateTime.now(),
       locale: const Locale('zh', 'TW'),
       helpText: '選擇日期查看午餐菜單',
       cancelText: '取消',
       confirmText: '確認',
       fieldLabelText: '輸入日期',
-      fieldHintText: 'yyyy/mm/dd',
+      fieldHintText: 'yyyy-MM-dd',
       errorFormatText: '日期格式錯誤',
       errorInvalidText: '無效日期',
       builder: (BuildContext context, Widget? child) {
@@ -110,6 +121,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
 
     try {
       final dateString = DateFormat('yyyy-MM-dd').format(date);
+
       final response = await http.get(
         Uri.parse(
           'https://fatraceschool.k12ea.gov.tw/offered/meal?KitchenId=all&MenuType=1&SchoolId=${_selectedSchool!.schoolId}&period=$dateString',
@@ -127,7 +139,6 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
             _isLoading = false;
           });
 
-          // 顯示成功訊息
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -173,39 +184,20 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 學校搜尋卡片
-            Card(
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _isSchoolPickerExpanded = !_isSchoolPickerExpanded;
-                        });
-                      },
-                      child: Row(
-                        children: [
-                          Text(
-                            _selectedSchool == null
-                                ? '搜尋學校'
-                                : '已選擇: ${_selectedSchool!.schoolName}',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            _isSchoolPickerExpanded
-                                ? Icons.expand_less
-                                : Icons.expand_more,
-                          ),
-                        ],
+            // School selection card - simplified
+            if (_selectedSchool == null || _isSearching)
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '搜尋學校',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    if (_isSchoolPickerExpanded) ...[
                       const SizedBox(height: 12),
                       TextField(
                         controller: _searchController,
@@ -240,15 +232,14 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
                         ),
                       ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
 
             const SizedBox(height: 16),
 
-            // 選中的學校顯示
-            if (_selectedSchool != null)
+            // Selected school display - modified
+            if (_selectedSchool != null && !_isSearching)
               Card(
                 color: Theme.of(context).colorScheme.primaryContainer,
                 child: Padding(
@@ -279,9 +270,15 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
                               ],
                             ),
                           ),
-                          FilledButton(
-                            onPressed: _loadTodayMeal,
-                            child: const Text('查看今日午餐'),
+                          OutlinedButton(
+                            onPressed: () {
+                              setState(() {
+                                _isSearching = true;
+                                _searchController.clear();
+                                _schools = [];
+                              });
+                            },
+                            child: const Text('更換學校'),
                           ),
                         ],
                       ),
@@ -302,7 +299,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
                               const Icon(Icons.calendar_today, size: 16),
                               const SizedBox(width: 4),
                               Text(
-                                '當前顯示: ${DateFormat('yyyy年MM月dd日').format(DateTime.parse(_currentMeal!.menuDate))}',
+                                '當前顯示: ${DateFormat('yyyy年MM月dd日').format(DateFormat('yyyy/MM/dd').parse(_currentMeal!.menuDate))}',
                                 style: Theme.of(context).textTheme.labelSmall,
                               ),
                             ],
@@ -316,7 +313,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
 
             const SizedBox(height: 16),
 
-            // 載入指示器
+            // Loading indicator
             if (_isLoading)
               const Expanded(
                 child: Center(
@@ -360,7 +357,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
                 ),
               )
             else if (_currentMeal != null && _dishes.isNotEmpty)
-              // 午餐菜單顯示
+              // Lunch menu display
               Expanded(
                 child: DefaultTabController(
                   length: 2,
@@ -435,7 +432,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 日期顯示卡片
+          // Date display card
           Card(
             color: Theme.of(context).colorScheme.secondaryContainer,
             child: Padding(
@@ -451,7 +448,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
                     DateFormat(
                       'yyyy年MM月dd日 EEEE',
                       'zh_TW',
-                    ).format(DateTime.parse(_currentMeal!.menuDate)),
+                    ).format(DateFormat('yyyy/MM/dd').parse(_currentMeal!.menuDate)),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -469,7 +466,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
 
           const SizedBox(height: 16),
 
-          // 營養資訊卡片
+          // Nutrition info card
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -518,7 +515,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
 
           const SizedBox(height: 16),
 
-          // 菜單列表
+          // Menu list
           Text(
             '菜單內容',
             style: Theme.of(
@@ -566,7 +563,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
             title: Text(
               DateFormat(
                 'yyyy年MM月dd日',
-              ).format(DateTime.parse(history.menuDate)),
+              ).format(DateFormat('yyyy/MM/dd').parse(history.menuDate)),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text('${history.menuTypeName} - ${history.calorie} 大卡'),
@@ -676,7 +673,9 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
       _currentMeal = null;
       _dishes = [];
       _mealHistory = [];
+      _isSearching = false; // Hide search bar after selection
     });
+    _loadTodayMeal(); // Auto-load today's meal
   }
 
   Future<void> _loadTodayMeal() async {
@@ -685,11 +684,12 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
-      _selectedDate = DateTime.now(); // 重設為今天
+      _selectedDate = DateTime.now();
     });
 
     try {
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
       final response = await http.get(
         Uri.parse(
           'https://fatraceschool.k12ea.gov.tw/offered/meal?KitchenId=all&MenuType=1&SchoolId=${_selectedSchool!.schoolId}&period=$today',
@@ -757,7 +757,6 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
     if (_selectedSchool == null) return;
 
     try {
-      // 載入過去30天的記錄
       final endDate = DateTime.now();
       final startDate = endDate.subtract(const Duration(days: 30));
 
@@ -798,7 +797,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
   }
 }
 
-// 資料模型
+// Data models
 class School {
   final int schoolId;
   final String schoolCode;
