@@ -801,7 +801,7 @@ class _LunchMenuHomePageState extends State<LunchMenuHomePage> {
   String _formatDateWithWeekday(String dateString) {
     try {
       final date = DateFormat('yyyy/MM/dd').parse(dateString);
-      return DateFormat('yyyy年MM月dd日 EEEE', 'zh_TW').format(date);
+      return DateFormat('MM月dd日 EEEE', 'zh_TW').format(date);
     } catch (e) {
       return dateString;
     }
